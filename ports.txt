@@ -1,0 +1,17 @@
+﻿
+Protocolo tcp Intervalos de Exclus├úo de Porta
+
+Porta Inicial    Porta Final      
+----------    --------      
+      2869        2869      
+      2991        3090      
+      6794        6893      
+     44934       45033      
+     45066       45165      
+     49735       49834      
+     50000       50059     *
+     50060       50159      
+     54433       54433      
+
+* - Exclus├Áes de porta administradas.
+
