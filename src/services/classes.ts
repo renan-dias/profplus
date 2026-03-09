@@ -1,5 +1,4 @@
-import { firestore } from "@/lib/firebase/config";
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy } from "firebase/firestore";
+import { addDoc, deleteDoc, getDocs, updateDoc } from "@/lib/storage";
 import { Class } from "@/types";
 
 const COLLECTION_NAME = "classes";
@@ -7,20 +6,11 @@ const COLLECTION_NAME = "classes";
 export const getClasses = async (userId: string): Promise<Class[]> => {
     if (!userId) return [];
 
-    const q = query(
-        collection(firestore, COLLECTION_NAME),
-        where("userId", "==", userId),
-        orderBy("createdAt", "desc")
+    return getDocs<Class>(
+        COLLECTION_NAME,
+        (item) => item.userId === userId,
+        (a, b) => b.createdAt - a.createdAt
     );
-
-    const querySnapshot = await getDocs(q);
-    const classes: Class[] = [];
-
-    querySnapshot.forEach((doc) => {
-        classes.push({ id: doc.id, ...doc.data() } as Class);
-    });
-
-    return classes;
 };
 
 export const createClass = async (data: Omit<Class, "id" | "createdAt">): Promise<Class> => {
@@ -29,16 +19,13 @@ export const createClass = async (data: Omit<Class, "id" | "createdAt">): Promis
         createdAt: Date.now(),
     };
 
-    const docRef = await addDoc(collection(firestore, COLLECTION_NAME), newDoc);
-    return { id: docRef.id, ...newDoc };
+    return addDoc<Class>(COLLECTION_NAME, newDoc);
 };
 
 export const updateClass = async (id: string, data: Partial<Omit<Class, "id" | "userId" | "createdAt">>): Promise<void> => {
-    const docRef = doc(firestore, COLLECTION_NAME, id);
-    await updateDoc(docRef, data);
+    return updateDoc<Class>(COLLECTION_NAME, id, data);
 };
 
 export const deleteClass = async (id: string): Promise<void> => {
-    const docRef = doc(firestore, COLLECTION_NAME, id);
-    await deleteDoc(docRef);
+    return deleteDoc<Class>(COLLECTION_NAME, id);
 };

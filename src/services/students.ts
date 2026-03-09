@@ -1,5 +1,4 @@
-import { firestore } from "@/lib/firebase/config";
-import { collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, where, orderBy, writeBatch } from "firebase/firestore";
+import { addDoc, deleteDoc, getDocs, updateDoc } from "@/lib/storage";
 import { Student } from "@/types";
 
 const COLLECTION_NAME = "students";
@@ -7,24 +6,15 @@ const COLLECTION_NAME = "students";
 export const getStudents = async (userId: string, classId?: string): Promise<Student[]> => {
     if (!userId) return [];
 
-    const constraints = [where("userId", "==", userId)];
-
-    if (classId) {
-        constraints.push(where("classId", "==", classId));
-    }
-
-    constraints.push(orderBy("createdAt", "desc"));
-
-    const q = query(collection(firestore, COLLECTION_NAME), ...constraints);
-
-    const querySnapshot = await getDocs(q);
-    const students: Student[] = [];
-
-    querySnapshot.forEach((doc) => {
-        students.push({ id: doc.id, ...doc.data() } as Student);
-    });
-
-    return students;
+    return getDocs<Student>(
+        COLLECTION_NAME,
+        (item) => {
+            if (item.userId !== userId) return false;
+            if (classId && item.classId !== classId) return false;
+            return true;
+        },
+        (a, b) => b.createdAt - a.createdAt
+    );
 };
 
 export const createStudent = async (data: Omit<Student, "id" | "createdAt">): Promise<Student> => {
@@ -33,27 +23,25 @@ export const createStudent = async (data: Omit<Student, "id" | "createdAt">): Pr
         createdAt: Date.now(),
     };
 
-    const docRef = await addDoc(collection(firestore, COLLECTION_NAME), newDoc);
-    return { id: docRef.id, ...newDoc };
+    return addDoc<Student>(COLLECTION_NAME, newDoc);
 };
 
 export const createStudentsBulk = async (students: Omit<Student, "id" | "createdAt">[]): Promise<void> => {
-    const batch = writeBatch(firestore);
-
-    students.forEach(studentData => {
-        const docRef = doc(collection(firestore, COLLECTION_NAME));
-        batch.set(docRef, { ...studentData, createdAt: Date.now() });
+    // Para simplificar, vamos criar os estudantes sequencialmente como promises no "banco local"
+    const promises = students.map(studentData => {
+        return addDoc<Student>(COLLECTION_NAME, {
+            ...studentData,
+            createdAt: Date.now(),
+        });
     });
 
-    await batch.commit();
+    await Promise.all(promises);
 };
 
 export const updateStudent = async (id: string, data: Partial<Omit<Student, "id" | "userId" | "createdAt">>): Promise<void> => {
-    const docRef = doc(firestore, COLLECTION_NAME, id);
-    await updateDoc(docRef, data);
+    return updateDoc<Student>(COLLECTION_NAME, id, data);
 };
 
 export const deleteStudent = async (id: string): Promise<void> => {
-    const docRef = doc(firestore, COLLECTION_NAME, id);
-    await deleteDoc(docRef);
+    return deleteDoc<Student>(COLLECTION_NAME, id);
 };

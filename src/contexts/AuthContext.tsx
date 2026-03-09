@@ -1,9 +1,15 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { User, onAuthStateChanged, signInWithPopup, signOut as firebaseSignOut } from "firebase/auth";
-import { auth, googleProvider } from "@/lib/firebase/config";
 import { useRouter } from "next/navigation";
+
+// Definindo a interface baseada no que o app espera (simulando User do firebase)
+export interface User {
+    uid: string;
+    email: string | null;
+    displayName: string | null;
+    photoURL: string | null;
+}
 
 interface AuthContextType {
     user: User | null;
@@ -21,32 +27,54 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
+const MOCK_USER: User = {
+    uid: "local-user-123",
+    email: "professor@profplus.local",
+    displayName: "Professor Local",
+    photoURL: "https://api.dicebear.com/7.x/avataaars/svg?seed=profplus",
+};
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const router = useRouter();
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-            setUser(currentUser);
-            setLoading(false);
-        });
+        // Verificar se há usuário salvo no localStorage (simula onAuthStateChanged)
+        const checkAuth = () => {
+            try {
+                const storedUser = localStorage.getItem("profplus_auth");
+                if (storedUser) {
+                    setUser(JSON.parse(storedUser));
+                }
+            } catch (error) {
+                console.error("Error reading auth from localStorage:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-        return () => unsubscribe();
+        checkAuth();
     }, []);
 
     const signInWithGoogle = async () => {
         try {
-            await signInWithPopup(auth, googleProvider);
+            // Simula delay de rede
+            await new Promise((resolve) => setTimeout(resolve, 800));
+
+            // Salva mock session
+            localStorage.setItem("profplus_auth", JSON.stringify(MOCK_USER));
+            setUser(MOCK_USER);
             router.push("/dashboard");
         } catch (error) {
-            console.error("Error signing in with Google:", error);
+            console.error("Error signing in locally:", error);
         }
     };
 
     const logOut = async () => {
         try {
-            await firebaseSignOut(auth);
+            localStorage.removeItem("profplus_auth");
+            setUser(null);
             router.push("/login");
         } catch (error) {
             console.error("Error signing out:", error);
